@@ -274,6 +274,16 @@
       line-height: 1.5;
     }
 
+    .user-dot {
+      animation: pulse-ring 2s ease-out infinite;
+    }
+
+    @keyframes pulse-ring {
+      0%   { stroke-opacity: 1; stroke-width: 2.5; }
+      70%  { stroke-opacity: 0; stroke-width: 10; }
+      100% { stroke-opacity: 0; stroke-width: 10; }
+    }
+
     @media (max-width: 760px) {
       .app {
         height: auto;
@@ -424,6 +434,12 @@ const places = [
     address: "Dob u. 3, 1072 Budapest, Hungary",
     category: "beer",
     icon: "🍺"
+  },
+  {
+    name: "Twentysix",
+    address: "Paulay Ede u. 26, 1061 Budapest, Hungary",
+    category: "beer",
+    icon: "🍻"
   }
 ];
 
@@ -695,6 +711,40 @@ document.querySelectorAll(".filter").forEach(button => {
 });
 
 document.getElementById("fit").addEventListener("click", fitVisible);
+
+/* ---- GPS: show the user's location as a pulsing dot ---- */
+let userMarker = null;
+
+function updateUserLocation(pos) {
+  const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+
+  if (userMarker) {
+    userMarker.setLatLng([lat, lng]);
+  } else {
+    userMarker = L.circleMarker([lat, lng], {
+      radius: 9,
+      color: "#1a73e8",
+      fillColor: "#4285f4",
+      fillOpacity: 0.9,
+      weight: 2.5,
+      className: "user-dot"
+    })
+      .bindPopup("<strong>Din position</strong>")
+      .addTo(map);
+  }
+}
+
+function handleLocationError(err) {
+  console.warn("Platsinformation ej tillgänglig:", err.message);
+}
+
+if (navigator.geolocation) {
+  navigator.geolocation.watchPosition(updateUserLocation, handleLocationError, {
+    enableHighAccuracy: true,
+    maximumAge: 10000,
+    timeout: 20000
+  });
+}
 
 init();
 </script>
