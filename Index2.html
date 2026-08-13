@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Budapest 13–17 aug</title>
+
+  <!-- Leaflet -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    crossorigin=""
+  />
+
+  <style>
+    :root {
+      --bg: #f6f3ec;
+      --panel: #fffdf8;
+      --text: #201f1c;
+      --muted: #777168;
+      --border: #ddd7cc;
+      --accent: #9d4f2f;
+      --accent-dark: #73361f;
+      --food: #d45b3f;
+      --beer: #c98b17;
+      --sight: #517b67;
+      --fun: #855b9d;
+      --hotel: #2e6490;
+      --shadow: 0 10px 25px rgba(45, 36, 25, .08);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    .app {
+      height: 100vh;
+      display: grid;
+      grid-template-columns: 390px 1fr;
+    }
+
+    aside {
+      overflow-y: auto;
+      padding: 22px;
+      border-right: 1px solid var(--border);
+      background: var(--panel);
+    }
+
+    h1 {
+      margin: 0 0 4px;
+      font-size: 25px;
+      letter-spacing: -0.03em;
+    }
+
+    .subtitle {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .search {
+      width: 100%;
+      border: 1px solid var(--border);
+      background: white;
+      border-radius: 12px;
+      padding: 11px 13px;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .search:focus { border-color: var(--accent); }
+
+    .filters {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+      margin: 12px 0 18px;
+    }
+
+    .filter {
+      appearance: none;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 7px 10px;
+      background: white;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .filter.active {
+      background: var(--text);
+      border-color: var(--text);
+      color: white;
+    }
+
+    .summary {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 4px 1px 12px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .fit-btn {
+      border: 0;
+      padding: 0;
+      color: var(--accent-dark);
+      background: transparent;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 650;
+    }
+
+    #place-list {
+      display: grid;
+      gap: 9px;
+    }
+
+    .card {
+      display: grid;
+      grid-template-columns: 30px 1fr auto;
+      gap: 10px;
+      align-items: start;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: white;
+      box-shadow: 0 3px 9px rgba(45,36,25,.03);
+      cursor: pointer;
+      transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow);
+    }
+
+    .card.visited { opacity: .58; }
+
+    .icon {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      font-size: 15px;
+      background: #f1ede5;
+    }
+
+    .name {
+      font-weight: 730;
+      font-size: 14px;
+      line-height: 1.2;
+    }
+
+    .address {
+      margin-top: 4px;
+      font-size: 11.5px;
+      line-height: 1.35;
+      color: var(--muted);
+    }
+
+    .meta {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+      margin-top: 7px;
+    }
+
+    .badge {
+      display: inline-flex;
+      padding: 3px 7px;
+      border-radius: 999px;
+      background: #f0ece5;
+      color: #615c54;
+      font-size: 10px;
+      font-weight: 650;
+    }
+
+    .visited-btn {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: white;
+      cursor: pointer;
+      font-size: 14px;
+      color: #aaa39a;
+    }
+
+    .card.visited .visited-btn {
+      background: var(--text);
+      color: white;
+      border-color: var(--text);
+    }
+
+    #map { height: 100%; width: 100%; }
+
+    .marker-pin {
+      width: 28px;
+      height: 28px;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      border: 2px solid white;
+      box-shadow: 0 2px 8px rgba(0,0,0,.28);
+      display: grid;
+      place-items: center;
+    }
+
+    .marker-pin span {
+      transform: rotate(45deg);
+      font-size: 13px;
+    }
+
+    .leaflet-popup-content-wrapper {
+      border-radius: 14px;
+    }
+
+    .popup-title {
+      font-size: 15px;
+      font-weight: 760;
+      margin-bottom: 5px;
+    }
+
+    .popup-address {
+      font-size: 12px;
+      color: #777168;
+      margin-bottom: 10px;
+    }
+
+    .popup-actions {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+    }
+
+    .popup-actions a {
+      display: inline-block;
+      padding: 7px 9px;
+      border-radius: 9px;
+      text-decoration: none;
+      background: #201f1c;
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .geocode-status {
+      display: none;
+      position: fixed;
+      bottom: 16px;
+      left: 410px;
+      z-index: 1000;
+      background: rgba(32,31,28,.9);
+      color: white;
+      padding: 8px 11px;
+      border-radius: 10px;
+      font-size: 12px;
+    }
+
+    .edit-hint {
+      margin: 18px 2px 4px;
+      padding-top: 15px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 11.5px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 760px) {
+      .app {
+        height: auto;
+        min-height: 100vh;
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 58vh;
+      }
+
+      aside {
+        max-height: none;
+        border-right: 0;
+        border-bottom: 1px solid var(--border);
+      }
+
+      #map { min-height: 58vh; }
+      .geocode-status { left: 16px; bottom: 16px; }
+    }
+  </style>
+</head>
+
+<body>
+<div class="app">
+  <aside>
+    <h1>Budapest 🇭🇺</h1>
+    <p class="subtitle">13–17 augusti · mat, öl & sightseeing</p>
+
+    <input id="search" class="search" placeholder="Sök bland platser…" />
+
+    <div class="filters">
+      <button class="filter active" data-filter="all">Alla</button>
+      <button class="filter" data-filter="food">🍕 Mat & fika</button>
+      <button class="filter" data-filter="beer">🍺 Öl</button>
+      <button class="filter" data-filter="sight">🏛️ Sevärt</button>
+      <button class="filter" data-filter="fun">✨ Övrigt</button>
+    </div>
+
+    <div class="summary">
+      <span id="counter"></span>
+      <button class="fit-btn" id="fit">Visa alla på kartan</button>
+    </div>
+
+    <div id="place-list"></div>
+
+    <div class="edit-hint">
+      <strong>Lätt att uppdatera:</strong> sök efter <code>const places = [</code> i filen.
+      Lägg bara till namn, adress och kategori. Koordinater är valfria – sidan försöker hitta platsen automatiskt.
+      Besökta platser sparas lokalt i webbläsaren.
+    </div>
+  </aside>
+
+  <main id="map"></main>
+</div>
+
+<div id="geocode-status" class="geocode-status">Hämtar kartpositioner…</div>
+
+<script
+  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  crossorigin="">
+</script>
+
+<script>
+/* ============================================================
+   EDITERA HÄR
+   Kategorier: food, beer, sight, fun, hotel
+
+   Tips:
+   - address används både för kartlänk och automatisk geokodning.
+   - lat/lng är valfria men gör laddningen snabbare.
+   - lägg till en ny plats genom att kopiera ett objekt.
+   ============================================================ */
+const places = [
+  {
+    name: "Mövenpick Hotel Budapest Centre",
+    address: "Rákóczi út 43-45, 1088 Budapest, Hungary",
+    category: "hotel",
+    icon: "🏨",
+    lat: 47.49705,
+    lng: 19.07010
+  },
+  {
+    name: "CRUDO PIZZA",
+    address: "Fehér Hajó u. 2-6, 1052 Budapest, Hungary",
+    category: "food",
+    icon: "🍕"
+  },
+  {
+    name: "Cookie Beacon Brunch Basilica",
+    address: "Hercegprímás u. 15, 1051 Budapest, Hungary",
+    category: "food",
+    icon: "🍪"
+  },
+  {
+    name: "DICA! Dispensa & Cantina",
+    address: "Klauzál tér 15, 1072 Budapest, Hungary",
+    category: "food",
+    icon: "🍝"
+  },
+  {
+    name: "Street Food Karaván",
+    address: "Kazinczy u. 18, 1075 Budapest, Hungary",
+    category: "food",
+    icon: "🌮"
+  },
+  {
+    name: "Pizza George",
+    address: "Egyetem tér 5, 1053 Budapest, Hungary",
+    category: "food",
+    icon: "🍕"
+  },
+  {
+    name: "Souvenir and Coffee / Department of Travel",
+    address: "Kristóf tér 3, 1052 Budapest, Hungary",
+    category: "fun",
+    icon: "☕"
+  },
+  {
+    name: "Pop&Roll Art Toilet",
+    address: "Dorottya u. 6, 1051 Budapest, Hungary",
+    category: "fun",
+    icon: "🎨"
+  },
+  {
+    name: "Ungerska parlamentet",
+    address: "Kossuth Lajos tér 1-3, 1055 Budapest, Hungary",
+    category: "sight",
+    icon: "🏛️",
+    lat: 47.50726,
+    lng: 19.04536
+  },
+  {
+    name: "Sankt Stefansbasilikan",
+    address: "Szent István tér 1, 1051 Budapest, Hungary",
+    category: "sight",
+    icon: "⛪",
+    lat: 47.50051,
+    lng: 19.05349
+  },
+  {
+    name: "Citadella",
+    address: "Citadella stny. 1, 1118 Budapest, Hungary",
+    category: "sight",
+    icon: "🏰",
+    lat: 47.48698,
+    lng: 19.04642
+  },
+  {
+    name: "FIRST Craft Beer & BBQ",
+    address: "Dob u. 3, 1072 Budapest, Hungary",
+    category: "beer",
+    icon: "🍺"
+  }
+];
+
+/* ============================================================
+   Resten behöver normalt inte ändras.
+   ============================================================ */
+
+const categoryLabels = {
+  food: "Mat & fika",
+  beer: "Hantverksöl",
+  sight: "Sevärt",
+  fun: "Övrigt",
+  hotel: "Boende"
+};
+
+const categoryColors = {
+  food: "#d45b3f",
+  beer: "#c98b17",
+  sight: "#517b67",
+  fun: "#855b9d",
+  hotel: "#2e6490"
+};
+
+const map = L.map("map", { zoomControl: true }).setView([47.4979, 19.0557], 14);
+
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19,
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+}).addTo(map);
+
+const markers = new Map();
+let activeFilter = "all";
+let searchText = "";
+
+function markerIcon(place) {
+  return L.divIcon({
+    className: "",
+    html: `<div class="marker-pin" style="background:${categoryColors[place.category] || "#555"}"><span>${place.icon || "📍"}</span></div>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 28],
+    popupAnchor: [0, -29]
+  });
+}
+
+function googleMapsUrl(place) {
+  return "https://www.google.com/maps/search/?api=1&query=" +
+    encodeURIComponent(place.name + ", " + place.address);
+}
+
+function osmUrl(place) {
+  const q = place.lat && place.lng
+    ? `${place.lat},${place.lng}`
+    : `${place.name}, ${place.address}`;
+  return "https://www.openstreetmap.org/search?query=" + encodeURIComponent(q);
+}
+
+function popupHtml(place) {
+  return `
+    <div class="popup-title">${escapeHtml(place.name)}</div>
+    <div class="popup-address">${escapeHtml(place.address)}</div>
+    <div class="popup-actions">
+      <a href="${googleMapsUrl(place)}" target="_blank" rel="noopener">Google Maps ↗</a>
+      <a href="${osmUrl(place)}" target="_blank" rel="noopener">OpenStreetMap ↗</a>
+    </div>
+  `;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function visitedKey(place) {
+  return "budapest-visited:" + place.name;
+}
+
+function isVisited(place) {
+  return localStorage.getItem(visitedKey(place)) === "1";
+}
+
+function toggleVisited(place) {
+  const key = visitedKey(place);
+  localStorage.setItem(key, isVisited(place) ? "0" : "1");
+  renderList();
+}
+
+function matches(place) {
+  const categoryMatch =
+    activeFilter === "all" ||
+    place.category === activeFilter ||
+    (place.category === "hotel" && activeFilter === "all");
+
+  const haystack = `${place.name} ${place.address} ${categoryLabels[place.category] || ""}`.toLowerCase();
+  const textMatch = haystack.includes(searchText.toLowerCase());
+
+  return categoryMatch && textMatch;
+}
+
+function renderList() {
+  const list = document.getElementById("place-list");
+  list.innerHTML = "";
+
+  const visiblePlaces = places.filter(matches);
+
+  visiblePlaces.forEach(place => {
+    const card = document.createElement("div");
+    card.className = "card" + (isVisited(place) ? " visited" : "");
+    card.innerHTML = `
+      <div class="icon">${place.icon || "📍"}</div>
+      <div>
+        <div class="name">${escapeHtml(place.name)}</div>
+        <div class="address">${escapeHtml(place.address)}</div>
+        <div class="meta">
+          <span class="badge">${categoryLabels[place.category] || place.category}</span>
+          ${place.lat && place.lng ? "" : '<span class="badge">auto-position</span>'}
+        </div>
+      </div>
+      <button class="visited-btn" title="Markera som besökt">${isVisited(place) ? "✓" : "○"}</button>
+    `;
+
+    card.addEventListener("click", e => {
+      if (e.target.closest(".visited-btn")) return;
+      const marker = markers.get(place.name);
+      if (marker && place.lat && place.lng) {
+        map.setView([place.lat, place.lng], 16, { animate: true });
+        marker.openPopup();
+      }
+    });
+
+    card.querySelector(".visited-btn").addEventListener("click", e => {
+      e.stopPropagation();
+      toggleVisited(place);
+    });
+
+    list.appendChild(card);
+  });
+
+  document.getElementById("counter").textContent =
+    `${visiblePlaces.length} av ${places.length} platser`;
+
+  updateMarkerVisibility();
+}
+
+function updateMarkerVisibility() {
+  places.forEach(place => {
+    const marker = markers.get(place.name);
+    if (!marker) return;
+
+    if (matches(place)) {
+      if (!map.hasLayer(marker)) marker.addTo(map);
+    } else {
+      if (map.hasLayer(marker)) map.removeLayer(marker);
+    }
+  });
+}
+
+function addMarker(place) {
+  if (!place.lat || !place.lng || markers.has(place.name)) return;
+  const marker = L.marker([place.lat, place.lng], { icon: markerIcon(place) })
+    .bindPopup(popupHtml(place));
+  markers.set(place.name, marker);
+  if (matches(place)) marker.addTo(map);
+}
+
+async function geocode(place) {
+  if (place.lat && place.lng) return true;
+
+  const cacheKey = "budapest-geocode:" + place.address;
+  const cached = localStorage.getItem(cacheKey);
+
+  if (cached) {
+    try {
+      const { lat, lng } = JSON.parse(cached);
+      place.lat = lat;
+      place.lng = lng;
+      return true;
+    } catch (_) {}
+  }
+
+  const query = encodeURIComponent(`${place.name}, ${place.address}`);
+  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${query}`;
+
+  try {
+    const response = await fetch(url, {
+      headers: { "Accept": "application/json" }
+    });
+    const result = await response.json();
+
+    if (result && result[0]) {
+      place.lat = Number(result[0].lat);
+      place.lng = Number(result[0].lon);
+      localStorage.setItem(cacheKey, JSON.stringify({ lat: place.lat, lng: place.lng }));
+      return true;
+    }
+
+    // Andra försöket: endast adressen.
+    const addressUrl =
+      `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(place.address)}`;
+    const second = await fetch(addressUrl, { headers: { "Accept": "application/json" } });
+    const secondResult = await second.json();
+
+    if (secondResult && secondResult[0]) {
+      place.lat = Number(secondResult[0].lat);
+      place.lng = Number(secondResult[0].lon);
+      localStorage.setItem(cacheKey, JSON.stringify({ lat: place.lat, lng: place.lng }));
+      return true;
+    }
+  } catch (error) {
+    console.warn("Geocoding misslyckades för", place.name, error);
+  }
+
+  return false;
+}
+
+function fitVisible() {
+  const points = places
+    .filter(matches)
+    .filter(p => p.lat && p.lng)
+    .map(p => [p.lat, p.lng]);
+
+  if (points.length === 1) {
+    map.setView(points[0], 16);
+  } else if (points.length > 1) {
+    map.fitBounds(points, { padding: [35, 35] });
+  }
+}
+
+async function init() {
+  // Lägg först till de platser som redan har koordinater.
+  places.forEach(addMarker);
+  renderList();
+  fitVisible();
+
+  const missing = places.filter(p => !p.lat || !p.lng);
+  if (!missing.length) return;
+
+  const status = document.getElementById("geocode-status");
+  status.style.display = "block";
+
+  for (let i = 0; i < missing.length; i++) {
+    status.textContent = `Hämtar kartpositioner… ${i + 1}/${missing.length}`;
+    const ok = await geocode(missing[i]);
+    if (ok) addMarker(missing[i]);
+
+    // Var snäll mot den kostnadsfria geokodningstjänsten.
+    if (i < missing.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 1050));
+    }
+  }
+
+  status.style.display = "none";
+  renderList();
+  fitVisible();
+}
+
+document.getElementById("search").addEventListener("input", e => {
+  searchText = e.target.value.trim();
+  renderList();
+});
+
+document.querySelectorAll(".filter").forEach(button => {
+  button.addEventListener("click", () => {
+    document.querySelectorAll(".filter").forEach(b => b.classList.remove("active"));
+    button.classList.add("active");
+    activeFilter = button.dataset.filter;
+    renderList();
+  });
+});
+
+document.getElementById("fit").addEventListener("click", fitVisible);
+
+init();
+</script>
+</body>
+</html>
